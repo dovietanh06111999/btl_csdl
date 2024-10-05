@@ -4,9 +4,6 @@ This is a MERN (MongoDB, Express, React, Node.js) stack project.
 
 ## Prerequisites
 
-- Docker
-- Docker Compose
-
 - Node:18 (for development)
 - Mongodb (for development)
 
