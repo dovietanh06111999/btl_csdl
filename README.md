@@ -26,6 +26,7 @@ To start the project manually or want to develope more feature, follow these ste
    cd backend
    npm install
    node src/index.js
+   node src/seedData.js
    ```
 
 4. Start the frontend server:
@@ -37,7 +38,6 @@ To start the project manually or want to develope more feature, follow these ste
    ```
 
 5. Open your browser and navigate to `http://localhost:3000` to see the application running.
-6. Navigate to `http://localhost:3000/seed-data` to seed db test.
 ## Project Structure
 
 - `frontend/` - React frontend
