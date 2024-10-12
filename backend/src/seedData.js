@@ -32,6 +32,7 @@ const seedData = async () => {
     address: "123 Đường ABC, Quận 1, TP.HCM",
     phone: "0123456789",
     area: 500,
+    createdAt: new Date("2024-8-30"),
   });
 
   const company2 = new Company({
@@ -44,6 +45,7 @@ const seedData = async () => {
     address: "456 Đường XYZ, Quận 2, TP.HCM",
     phone: "0987654321",
     area: 1000,
+    createdAt: new Date("2024-8-30"),
   });
 
   const company3 = new Company({
@@ -56,6 +58,7 @@ const seedData = async () => {
     address: "789 Đường DEF, Quận 3, TP.HCM",
     phone: "0345678910",
     area: 600,
+    createdAt: new Date("2024-8-30"),
   });
 
   const company4 = new Company({
@@ -68,6 +71,7 @@ const seedData = async () => {
     address: "159 Đường GHI, Quận 4, TP.HCM",
     phone: "0234567890",
     area: 800,
+    createdAt: new Date("2024-8-30"),
   });
 
   const company5 = new Company({
@@ -80,6 +84,7 @@ const seedData = async () => {
     address: "321 Đường JKL, Quận 5, TP.HCM",
     phone: "0456789012",
     area: 700,
+    createdAt: new Date("2024-8-30"),
   });
 
   await Company.insertMany([company1, company2, company3, company4, company5]);
@@ -207,54 +212,6 @@ const seedData = async () => {
     service5,
   ]);
 
-  // ServiceRecords
-  const record1 = new ServiceRecord({
-    _id: new mongoose.Types.ObjectId(),
-    serviceId: service1._id,
-    companyId: company1._id,
-    startDate: new Date("2024-07-01"),
-    endDate: new Date("2024-07-30"),
-    income: 5000000,
-  });
-
-  const record2 = new ServiceRecord({
-    _id: new mongoose.Types.ObjectId(),
-    serviceId: service2._id,
-    companyId: company2._id,
-    startDate: new Date("2024-07-01"),
-    endDate: new Date("2024-07-30"),
-    income: 10000000,
-  });
-
-  const record3 = new ServiceRecord({
-    _id: new mongoose.Types.ObjectId(),
-    serviceId: service3._id,
-    companyId: company3._id,
-    startDate: new Date("2024-07-01"),
-    endDate: new Date("2024-07-30"),
-    income: 7500000,
-  });
-
-  const record4 = new ServiceRecord({
-    _id: new mongoose.Types.ObjectId(),
-    serviceId: service4._id,
-    companyId: company4._id,
-    startDate: new Date("2024-07-01"),
-    endDate: new Date("2024-07-30"),
-    income: 3000000,
-  });
-
-  const record5 = new ServiceRecord({
-    _id: new mongoose.Types.ObjectId(),
-    serviceId: service5._id,
-    companyId: company5._id,
-    startDate: new Date("2024-07-01"),
-    endDate: new Date("2024-07-30"),
-    income: 6000000,
-  });
-
-  await ServiceRecord.insertMany([record1, record2, record3, record4, record5]);
-
   // BuildingEmployees
   const buildingEmployee1 = new BuildingEmployee({
     _id: new mongoose.Types.ObjectId(),
@@ -313,12 +270,65 @@ const seedData = async () => {
     buildingEmployee4,
     buildingEmployee5,
   ]);
+  // ServiceRecords
+  const record1 = new ServiceRecord({
+    _id: new mongoose.Types.ObjectId(),
+    serviceId: service1._id,
+    companyId: company1._id,
+    employeeId: buildingEmployee1._id,
+    startDate: new Date("2024-10-01"),
+    endDate: new Date("2024-10-30"),
+    income: 5000000,
+  });
 
+  const record2 = new ServiceRecord({
+    _id: new mongoose.Types.ObjectId(),
+    serviceId: service2._id,
+    companyId: company2._id,
+    employeeId: buildingEmployee2._id,
+    startDate: new Date("2024-10-01"),
+    endDate: new Date("2024-10-30"),
+    income: 10000000,
+  });
+
+  const record3 = new ServiceRecord({
+    _id: new mongoose.Types.ObjectId(),
+    serviceId: service3._id,
+    companyId: company3._id,
+    employeeId: buildingEmployee3._id,
+    startDate: new Date("2024-10-01"),
+    endDate: new Date("2024-10-30"),
+    income: 7500000,
+  });
+
+  const record4 = new ServiceRecord({
+    _id: new mongoose.Types.ObjectId(),
+    serviceId: service4._id,
+    companyId: company4._id,
+    employeeId: buildingEmployee4._id,
+    startDate: new Date("2024-10-01"),
+    endDate: new Date("2024-10-30"),
+    income: 3000000,
+  });
+
+  const record5 = new ServiceRecord({
+    _id: new mongoose.Types.ObjectId(),
+    serviceId: service5._id,
+    companyId: company5._id,
+    employeeId: buildingEmployee5._id,
+    startDate: new Date("2024-10-01"),
+    endDate: new Date("2024-10-30"),
+    income: 6000000,
+  });
+
+  await ServiceRecord.insertMany([record1, record2, record3, record4, record5]);
   // SalaryRecords
   const salaryRecord1 = new SalaryRecord({
     _id: new mongoose.Types.ObjectId(),
     employeeId: buildingEmployee1._id,
-    month: new Date("2024-09-01"),
+    serviceId: service1._id,
+    companyId: company1._id,
+    month: new Date("2024-10-01"),
     serviceType: "Dịch vụ bảo vệ",
     salaryAmount: 5000000,
   });
@@ -326,7 +336,9 @@ const seedData = async () => {
   const salaryRecord2 = new SalaryRecord({
     _id: new mongoose.Types.ObjectId(),
     employeeId: buildingEmployee2._id,
-    month: new Date("2024-09-01"),
+    serviceId: service2._id,
+    companyId: company2._id,
+    month: new Date("2024-10-01"),
     serviceType: "Dịch vụ lễ tân",
     salaryAmount: 4000000,
   });
@@ -334,7 +346,9 @@ const seedData = async () => {
   const salaryRecord3 = new SalaryRecord({
     _id: new mongoose.Types.ObjectId(),
     employeeId: buildingEmployee3._id,
-    month: new Date("2024-09-01"),
+    serviceId: service3._id,
+    companyId: company3._id,
+    month: new Date("2024-10-01"),
     serviceType: "Dịch vụ bảo trì thiết bị",
     salaryAmount: 6000000,
   });
@@ -342,7 +356,9 @@ const seedData = async () => {
   const salaryRecord4 = new SalaryRecord({
     _id: new mongoose.Types.ObjectId(),
     employeeId: buildingEmployee4._id,
-    month: new Date("2024-09-01"),
+    serviceId: service4._id,
+    companyId: company4._id,
+    month: new Date("2024-10-01"),
     serviceType: "Dịch vụ vệ sinh",
     salaryAmount: 8000000,
   });
@@ -350,7 +366,9 @@ const seedData = async () => {
   const salaryRecord5 = new SalaryRecord({
     _id: new mongoose.Types.ObjectId(),
     employeeId: buildingEmployee5._id,
-    month: new Date("2024-09-01"),
+    serviceId: service5._id,
+    companyId: company5._id,
+    month: new Date("2024-10-01"),
     serviceType: "Dịch vụ trông giữ xe",
     salaryAmount: 4500000,
   });

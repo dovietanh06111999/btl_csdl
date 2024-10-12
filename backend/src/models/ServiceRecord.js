@@ -12,6 +12,11 @@ const serviceRecordSchema = new mongoose.Schema(
       ref: "BuildingService",
       required: true,
     },
+    employeeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "BuildingEmployee",
+      required: true,
+    },
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
     income: { type: Number, required: true },

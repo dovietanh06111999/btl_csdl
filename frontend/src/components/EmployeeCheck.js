@@ -19,7 +19,7 @@ import api from "../services/api";
 const EmployeeCheck = () => {
   const [employees, setEmployees] = useState([]);
   const [date, setDate] = useState(""); // State để lưu trữ ngày được chọn
-  const [limit, setLimit] = useState(""); // State để lưu trữ giới hạn số lượng bản ghi
+  const [limit, setLimit] = useState(5); // State để lưu trữ giới hạn số lượng bản ghi
 
   // Hàm gọi API để lấy thông tin truy cập dựa trên ngày và giới hạn
   const fetchEmployeeAccessInfo = (selectedDate, recordLimit) => {
@@ -39,7 +39,12 @@ const EmployeeCheck = () => {
 
   // Hàm xử lý sự kiện khi bấm nút "Tìm kiếm"
   const handleSearch = () => {
-    fetchEmployeeAccessInfo(date, limit); // Gọi API với ngày được chọn và giới hạn
+    const recordLimit = parseInt(limit, 10); // Chuyển đổi limit thành số nguyên
+    if (isNaN(recordLimit) || recordLimit < 0) {
+      alert("Giới hạn số lượng bản ghi phải là số nguyên không âm."); // Thông báo lỗi nếu không hợp lệ
+      return;
+    }
+    fetchEmployeeAccessInfo(date, recordLimit); // Gọi API với ngày được chọn và giới hạn
   };
 
   return (

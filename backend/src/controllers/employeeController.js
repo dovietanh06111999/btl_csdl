@@ -6,6 +6,7 @@ const getEmployeeAccessInfo = async (req, res) => {
     // Lấy ngày từ req.query, nếu không có thì sử dụng ngày hiện tại
     const { date, limit } = req.query; // Thêm limit vào đây
     const targetDate = date ? new Date(date) : new Date(); // Chuyển đổi string thành Date hoặc lấy ngày hiện tại
+    console.log(limit);
 
     // Tính toán startOfDay và endOfDay dựa trên targetDate
     const startOfDay = new Date(targetDate);
@@ -13,10 +14,20 @@ const getEmployeeAccessInfo = async (req, res) => {
     const endOfDay = new Date(targetDate);
     endOfDay.setHours(23, 59, 59, 999);
 
+    // Chuyển đổi limit thành số nguyên và kiểm tra
+    let limitValue = 0; // Giá trị mặc định là 0
+
+    if (limit) {
+      limitValue = parseInt(limit, 10); // Chuyển đổi thành số nguyên
+      if (isNaN(limitValue) || limitValue < 0) {
+        throw new Error("Limit must be a non-negative integer"); // Ném lỗi nếu không hợp lệ
+      }
+    }
+
     const employeeAccessInfo = await EmployeeModel.aggregate([
       {
         $lookup: {
-          from: "companies", // tên collection Company
+          from: "companies",
           localField: "companyId",
           foreignField: "_id",
           as: "companyInfo",
@@ -65,7 +76,7 @@ const getEmployeeAccessInfo = async (req, res) => {
       },
       // Thêm bước giới hạn số lượng bản ghi
       {
-        $limit: limit ? parseInt(limit) : 0, // Chỉ định giới hạn bản ghi nếu có
+        $limit: limitValue, // Chỉ định giới hạn bản ghi nếu có
       },
     ]);
 
@@ -78,15 +89,14 @@ const getEmployeeAccessInfo = async (req, res) => {
 
 const getBuildingEmployeesWithSalary = async (req, res) => {
   try {
-    // Lấy thông tin tháng, năm và số lượng bản ghi từ query (hoặc mặc định là tháng và năm hiện tại)
     const month = parseInt(req.query.month) || new Date().getMonth() + 1;
     const year = parseInt(req.query.year) || new Date().getFullYear();
-    const limit = parseInt(req.query.limit) || 10; // Giới hạn số lượng bản ghi trả về (mặc định 10)
+    const limit = parseInt(req.query.limit) || 10;
 
     const employeeSalaryInfo = await BuildingEmployeeModel.aggregate([
       {
         $lookup: {
-          from: "salaryrecords", // Tên collection lương
+          from: "servicerecords",
           let: { employeeId: "$_id" },
           pipeline: [
             {
@@ -94,8 +104,8 @@ const getBuildingEmployeesWithSalary = async (req, res) => {
                 $expr: {
                   $and: [
                     { $eq: ["$employeeId", "$$employeeId"] },
-                    { $eq: [{ $month: "$month" }, month] }, // So sánh tháng
-                    { $eq: [{ $year: "$month" }, year] }, // So sánh năm
+                    { $eq: [{ $month: "$startDate" }, month] },
+                    { $eq: [{ $year: "$startDate" }, year] },
                   ],
                 },
               },
@@ -105,15 +115,29 @@ const getBuildingEmployeesWithSalary = async (req, res) => {
         },
       },
       {
-        $unwind: { path: "$salaryInfo", preserveNullAndEmptyArrays: true }, // Gộp thông tin lương
+        $unwind: { path: "$salaryInfo", preserveNullAndEmptyArrays: true },
       },
       {
         $lookup: {
-          from: "servicerecords", // Tên collection dịch vụ
-          localField: "_id",
-          foreignField: "employeeId",
-          as: "serviceRecords",
+          from: "companies",
+          localField: "salaryInfo.companyId",
+          foreignField: "_id",
+          as: "companyInfo",
         },
+      },
+      {
+        $unwind: { path: "$companyInfo", preserveNullAndEmptyArrays: true },
+      },
+      {
+        $lookup: {
+          from: "buildingservices",
+          localField: "salaryInfo.serviceId",
+          foreignField: "_id",
+          as: "serviceInfo",
+        },
+      },
+      {
+        $unwind: { path: "$serviceInfo", preserveNullAndEmptyArrays: true },
       },
       {
         $project: {
@@ -122,12 +146,48 @@ const getBuildingEmployeesWithSalary = async (req, res) => {
           phone: 1,
           position: 1,
           role: 1,
-          monthlySalary: { $ifNull: ["$salaryInfo.salaryAmount", 0] }, // Lương tháng (nếu không có thì 0)
-          servicesProvided: "$serviceRecords.serviceType", // Dịch vụ đã cung cấp
+          companyName: { $ifNull: ["$companyInfo.name", "Chưa có công ty"] },
+          // Tính toán mức lương hàng tháng dựa trên giá dịch vụ unitPrice
+          monthlySalary: {
+            $let: {
+              vars: {
+                baseSalary: "$serviceInfo.unitPrice",
+                numberOfEmployees: {
+                  $ifNull: ["$companyInfo.numberOfEmployees", 0],
+                },
+                area: { $ifNull: ["$companyInfo.area", 0] },
+                employeeIncrease: {
+                  $floor: {
+                    $divide: [
+                      { $subtract: ["$companyInfo.numberOfEmployees", 10] },
+                      5,
+                    ],
+                  },
+                },
+                areaIncrease: {
+                  $floor: {
+                    $divide: [{ $subtract: ["$companyInfo.area", 100] }, 10],
+                  },
+                },
+              },
+              in: {
+                $multiply: [
+                  "$$baseSalary",
+                  {
+                    $add: [
+                      1,
+                      { $multiply: ["$$employeeIncrease", 0.05] },
+                      { $multiply: ["$$areaIncrease", 0.05] },
+                    ],
+                  },
+                ],
+              },
+            },
+          },
         },
       },
       {
-        $limit: limit, // Giới hạn số lượng bản ghi
+        $limit: limit,
       },
     ]);
 

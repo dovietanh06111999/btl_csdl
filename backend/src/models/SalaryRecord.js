@@ -7,6 +7,16 @@ const salaryRecordSchema = new mongoose.Schema(
       ref: "BuildingEmployee",
       required: true,
     },
+    serviceId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "BuildingService",
+      required: true,
+    },
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      required: true,
+    },
     month: { type: Date, required: true },
     serviceType: { type: String, required: true },
     salaryAmount: { type: Number, required: true },

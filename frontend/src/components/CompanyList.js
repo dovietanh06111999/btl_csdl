@@ -17,14 +17,14 @@ const CompanyList = () => {
   // Hàm gọi API để lấy danh sách công ty
   const fetchCompanies = () => {
     api
-      .get(`/api/companies/monthly-costs?limit=${limit}`)
+      .get(`/api/companies/monthly-costs?limit=${limit}`) // Sửa lại đường dẫn API
       .then((response) => setCompanies(response.data))
       .catch((error) => console.error("Error fetching companies:", error));
   };
 
   useEffect(() => {
     fetchCompanies(); // Gọi API khi component được render lần đầu
-  }, []);
+  }, [limit]); // Cập nhật để gọi lại khi limit thay đổi
 
   return (
     <div>
@@ -49,22 +49,46 @@ const CompanyList = () => {
           <TableRow>
             <TableCell>Tên công ty</TableCell>
             <TableCell>Diện tích thuê (m²)</TableCell>
-            <TableCell>Tiền thuê mặt bằng (VNĐ)</TableCell>
-            <TableCell>Tổng tiền dịch vụ (VNĐ)</TableCell>
-            <TableCell>Tổng chi phí hàng tháng (VNĐ)</TableCell>
+            <TableCell>Tổng chi phí theo tháng</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
           {companies.map((company) => (
-            <TableRow key={company._id}>
-              <TableCell>{company.name}</TableCell>
-              <TableCell>{company.area}</TableCell>
-              <TableCell>{company.areaCost.toLocaleString()} VND</TableCell>
-              <TableCell>
-                {company.totalServiceCost.toLocaleString()} VND
-              </TableCell>
-              <TableCell>{company.totalCost.toLocaleString()} VND</TableCell>
-            </TableRow>
+            <React.Fragment key={company._id}>
+              <TableRow>
+                <TableCell>{company.name}</TableCell>
+                <TableCell>{company.area}</TableCell>
+                <TableCell>
+                  {/* Hiển thị bảng chi phí theo tháng */}
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Tháng/Năm</TableCell>
+                        <TableCell>Chi phí diện tích (VND)</TableCell>
+                        <TableCell>Chi phí dịch vụ (VND)</TableCell>
+                        <TableCell>Tổng chi phí (VND)</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {company.totalBillByMonth.map((monthCost, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{`${monthCost.month}/${monthCost.year}`}</TableCell>
+                          <TableCell>
+                            {monthCost.totalAreaCost.toLocaleString()} VND
+                          </TableCell>
+                          <TableCell>
+                            {monthCost.totalServiceCost.toLocaleString()} VND
+                          </TableCell>
+                          <TableCell>
+                            {monthCost.totalCost.toLocaleString()} VND
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableCell>
+              </TableRow>
+            </React.Fragment>
           ))}
         </TableBody>
       </Table>

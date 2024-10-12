@@ -3,20 +3,24 @@ const CompanyModel = require("../models/Company");
 const calculateMonthlyCosts = async (req, res) => {
   try {
     const currentDate = new Date();
-    const daysInMonth = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth() + 1,
-      0
-    ).getDate();
-
-    // Nhận giá trị limit từ query parameters (mặc định là 10 nếu không có)
-    const limit = parseInt(req.query.limit, 10) || 10;
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth() + 1; // Lấy tháng hiện tại
+    const limit = parseInt(req.query.limit, 10) || 10; // Số lượng công ty trả về
 
     const companies = await CompanyModel.aggregate([
       {
+        $match: {
+          createdAt: { $lte: currentDate },
+        },
+      },
+      {
         $lookup: {
           from: "serviceRecords",
-          let: { companyId: "$_id" },
+          let: {
+            companyId: "$_id",
+            companyEmployees: "$employees",
+            companyArea: "$area",
+          },
           pipeline: [
             {
               $match: {
@@ -34,9 +38,74 @@ const calculateMonthlyCosts = async (req, res) => {
               },
             },
             {
-              $unwind: {
-                path: "$serviceDetails",
-                preserveNullAndEmptyArrays: true,
+              $unwind: "$serviceDetails",
+            },
+            {
+              $addFields: {
+                adjustedUnitPrice: {
+                  $let: {
+                    vars: {
+                      basePrice: "$serviceDetails.unitPrice",
+                      employeeFactor: {
+                        $cond: [
+                          { $lte: ["$$companyEmployees", 10] },
+                          1,
+                          {
+                            $add: [
+                              1,
+                              {
+                                $multiply: [
+                                  0.05,
+                                  {
+                                    $floor: {
+                                      $divide: [
+                                        {
+                                          $subtract: ["$$companyEmployees", 10],
+                                        },
+                                        5,
+                                      ],
+                                    },
+                                  },
+                                ],
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                      areaFactor: {
+                        $cond: [
+                          { $lte: ["$$companyArea", 100] },
+                          1,
+                          {
+                            $add: [
+                              1,
+                              {
+                                $multiply: [
+                                  0.05,
+                                  {
+                                    $floor: {
+                                      $divide: [
+                                        { $subtract: ["$$companyArea", 100] },
+                                        10,
+                                      ],
+                                    },
+                                  },
+                                ],
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                    },
+                    in: {
+                      $multiply: [
+                        "$$basePrice",
+                        "$$employeeFactor",
+                        "$$areaFactor",
+                      ],
+                    },
+                  },
+                },
               },
             },
             {
@@ -50,11 +119,11 @@ const calculateMonthlyCosts = async (req, res) => {
                     $multiply: [
                       {
                         $subtract: [
-                          { $min: ["$endDate", currentDate] }, // Giới hạn đến ngày hiện tại
+                          { $min: ["$endDate", currentDate] },
                           "$startDate",
                         ],
                       },
-                      { $divide: ["$serviceDetails.unitPrice", daysInMonth] },
+                      { $divide: ["$adjustedUnitPrice", 30] },
                     ],
                   },
                 },
@@ -66,53 +135,109 @@ const calculateMonthlyCosts = async (req, res) => {
       },
       {
         $addFields: {
-          billByMonth: {
+          areaBillByMonth: {
+            $map: {
+              input: {
+                $range: [{ $month: "$createdAt" }, currentMonth + 1],
+              },
+              as: "month",
+              in: {
+                year: currentYear,
+                month: "$$month",
+                areaCost: { $multiply: ["$area", 1000] },
+              },
+            },
+          },
+          serviceBillByMonth: {
             $map: {
               input: "$serviceRecords",
               as: "record",
               in: {
                 month: { $add: ["$$record._id.month", 0] },
                 year: { $add: ["$$record._id.year", 0] },
-                total: "$$record.totalServiceBill",
+                totalServiceBill: "$$record.totalServiceBill",
               },
             },
           },
         },
       },
       {
-        $project: {
-          name: 1,
-          area: 1,
-          billByMonth: {
-            $filter: {
-              input: "$billByMonth",
-              as: "monthData",
-              cond: { $gt: ["$$monthData.total", 0] }, // Chỉ lấy các tháng có tổng > 0
+        $addFields: {
+          totalBillByMonth: {
+            $map: {
+              input: "$areaBillByMonth",
+              as: "areaMonth",
+              in: {
+                month: "$$areaMonth.month",
+                year: "$$areaMonth.year",
+                totalAreaCost: "$$areaMonth.areaCost",
+                totalServiceCost: {
+                  $reduce: {
+                    input: "$serviceBillByMonth",
+                    initialValue: 0,
+                    in: {
+                      $cond: [
+                        { $eq: ["$$this.month", "$$areaMonth.month"] },
+                        { $add: ["$$value", "$$this.totalServiceBill"] },
+                        "$$value",
+                      ],
+                    },
+                  },
+                },
+                totalCost: {
+                  $add: [
+                    "$$areaMonth.areaCost",
+                    {
+                      $reduce: {
+                        input: "$serviceBillByMonth",
+                        initialValue: 0,
+                        in: {
+                          $cond: [
+                            { $eq: ["$$this.month", "$$areaMonth.month"] },
+                            { $add: ["$$value", "$$this.totalServiceBill"] },
+                            "$$value",
+                          ],
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
             },
-          },
-          areaCost: {
-            $multiply: ["$area", 1000], // Giả sử đơn giá cho mỗi m2 là 1000
           },
         },
       },
       {
-        $addFields: {
-          totalServiceCost: { $sum: "$billByMonth.total" },
-          totalCost: {
-            $add: [
-              { $multiply: ["$area", 1000] }, // Tiền thuê mặt bằng
-              { $sum: "$billByMonth.total" }, // Tổng tiền dịch vụ
-            ],
+        $group: {
+          _id: {
+            _id: "$_id",
+            name: "$name",
+            area: "$area",
+          },
+          totalBillByMonth: { $push: "$totalBillByMonth" },
+        },
+      },
+      {
+        $project: {
+          _id: "$_id._id",
+          name: "$_id.name",
+          area: "$_id.area",
+          totalBillByMonth: {
+            $reduce: {
+              input: "$totalBillByMonth",
+              initialValue: [],
+              in: { $concatArrays: ["$$value", "$$this"] },
+            },
           },
         },
       },
       {
         $sort: {
-          totalCost: -1, // Sắp xếp theo tổng chi phí giảm dần
+          "totalBillByMonth.totalCost": -1,
         },
       },
       {
-        $limit: limit, // Giới hạn số lượng bản ghi trả về
+        $limit: limit,
       },
     ]);
 
